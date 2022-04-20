@@ -17,8 +17,8 @@ def get_gradient(img):
     returnn:
         the gradient of the image
     """
-    # TODO: Ed
-    pass
+    gradient = np.gradient(img)
+    return np.hstack(gradient).T
 
 
 def estimating_latent_image_with_blur_kernel(blur_img, kernel):
