@@ -19,11 +19,11 @@ def get_average_psnr(img):
     return 10
 
 
-def main(data_path='data/original_images/'):
+def main(data_path='data/original_images/', kernel_path='data/kernels/'):
     """
     plot the results of average psnr
     """
-    blurred_images = np.zeros(10)  # there should be 15 of them
+    truth_images, blurred_images = parse_dataset(data_path, kernel_path)
     psnr = []
     labels = []
 
