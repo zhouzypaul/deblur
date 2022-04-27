@@ -176,6 +176,7 @@ def solve_kernel(y, x):
     '''
     this function estimates the blur kernel efficiently in gradient space 
     using FFT as described in https://dl.acm.org/doi/pdf/10.1145/1618452.1618491 
+    TODO: not done, paul pls help
     '''
     dx = [[-1, 1], [0, 0]]
     dy = [[-1, 0], [1, 0]]
