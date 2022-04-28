@@ -144,6 +144,21 @@ def init_kernel():
     return np.ones(kernel_size)
 
 
+def solve_kernel_with_cvxpy(y, x):
+    """
+    solve for the blur kernel by the minimization problem as a quadratic program
+    solve using cvxpy
+    """
+    import cvxpy as cp
+    k = cp.Variable(kernel_size)
+    objective = cp.Minimize(cp.norm(util.get_gradient(x) * k - util.get_gradient(y))**2 + hp.gamma * cp.norm(k)**2)
+    constraints = []
+    prob = cp.Problem(objective, constraints)
+
+    result = prob.solve()
+    return k.value
+
+
 def solve_kernel(y, x):
     '''
     this function estimates the blur kernel efficiently in gradient space 
@@ -168,17 +183,17 @@ def solve_kernel(y, x):
     b_f = (np.conj(latent_xf) * blurred_xf) + (np.conj(latent_yf) * blurred_yf)
     b = np.real(otf2psf(b_f, kernel_size))
 
-    p.m = (np.conj(latent_xf) * latent_xf) + (np.conj(latent_yf) * latent_yf)
-    %p.img_size = size(blurred)
-    p.img_size = size(blurred_xf)
-    p.psf_size = psf_size
-    p.lambda = weight
+    # p.m = (np.conj(latent_xf) * latent_xf) + (np.conj(latent_yf) * latent_yf)
+    # %p.img_size = size(blurred)
+    # p.img_size = size(blurred_xf)
+    # p.psf_size = psf_size
+    # p.lambda = weight
 
-    psf = ones(psf_size) / prod(psf_size)
-    psf = conjgrad(psf, b, 20, 1e-5, @ compute_Ax, p)
+    # psf = ones(psf_size) / prod(psf_size)
+    # psf = conjgrad(psf, b, 20, 1e-5, @ compute_Ax, p)
 
-    psf(psf < max(psf(:))*0.05) = 0
-    psf = psf / sum(psf(: ))
+    # psf(psf < max(psf(:))*0.05) = 0
+    # psf = psf / sum(psf(: ))
 
 
 # ===== TAKEN FROM pypher ====================================
