@@ -2,7 +2,6 @@
 This file handles the debluring of images
 this is where the magic comes together
 """
-import xxlimited
 import numpy as np
 from numpy.fft import fft2, ifft2
 import sklearn
@@ -10,27 +9,10 @@ import matplotlib.pyplot as plt
 import cv2
 from scipy.ndimage import convolve
 from scipy.fftpack import fftn, ifftn
+
+import util
+import params as hp
 from get_data import parse_dataset
-
-
-# hyperparameters from the paper
-lmda = 4e-3
-
-sigma = 1
-beta_max = 2**3
-miu_max = 1e5
-
-
-def get_gradient(img):
-    """
-    this function calculates the gradient of the image
-    args:
-        img: an image
-    returnn:
-        the gradient of the image
-    """
-    # TODO: Ed
-    pass
 
 
 def estimating_latent_image_with_blur_kernel(blur_img, kernel):
@@ -44,29 +26,19 @@ def estimating_latent_image_with_blur_kernel(blur_img, kernel):
         intermediate latente image
     """
     latent_img = blur_img
-    beta = 2 * lmda * sigma
-    # repeat
-    while beta <= beta_max:
+    beta = 2 * hp.lmda * hp.sigma
+    # repeat 
+    while beta <= hp.beta_max:
         # solve for u using (10)
-        u = latent_img if np.linalg.norm(
-            latent_img)**2 >= lmda * sigma / beta else np.zeros_like(latent_img)
-        miu = 2 * lmda
+        u = util.get_u(latent_img)
+        miu = 2 * hp.lmda
 
         # repeat
-        while miu <= miu_max:
+        while miu <= hp.miu_max:
             # solve for g using (11)
-            grad = get_gradient(latent_img)
-            g = grad if np.linalg.norm(
-                grad)**2 >= lmda/miu else np.zeros_like(grad)
+            g = util.get_g(latent_img, miu)
             # solve for x using (8)
-            F_G = np.conj(fft2(np.gradient(latent_img, axis=1))) * fft2(np.gradient(g, axis=1)) \
-                + np.conj(fft2(np.gradient(latent_img, axis=0))) * \
-                fft2(np.gradient(g, axis=0))
-            numerator = np.conj(fft2(kernel)) * \
-                fft2(blur_img) + beta * fft2(u) + miu * F_G
-            denominator = np.conj(fft2(kernel)) * fft2(kernel) + \
-                beta + miu * np.conj(fft2(grad)) * fft2(grad)
-            latent_img = ifft2(numerator / denominator)
+            latent_img = util.get_latent(u, g, latent_img, blur_img, kernel, beta, miu)
             miu = 2 * miu
     return latent_img
 
