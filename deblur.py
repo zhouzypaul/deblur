@@ -2,13 +2,10 @@
 This file handles the debluring of images
 this is where the magic comes together
 """
-import numpy as np
-from numpy.fft import fft2, ifft2
-import sklearn
-import matplotlib.pyplot as plt
 import cv2
-from scipy.ndimage import convolve
-from scipy.fftpack import fftn, ifftn
+import numpy as np
+from scipy import optimize
+import matplotlib.pyplot as plt
 
 import util
 import params as hp
@@ -30,7 +27,7 @@ def estimating_latent_image_with_blur_kernel(blur_img, kernel):
     # repeat 
     while beta <= hp.beta_max:
         # solve for u using (10)
-        u = util.get_u(latent_img)
+        u = util.get_u(latent_img, beta)
         miu = 2 * hp.lmda
 
         # repeat
@@ -40,6 +37,7 @@ def estimating_latent_image_with_blur_kernel(blur_img, kernel):
             # solve for x using (8)
             latent_img = util.get_latent(u, g, latent_img, blur_img, kernel, beta, miu)
             miu = 2 * miu
+        beta = 2 * beta
     return latent_img
 
 
@@ -76,7 +74,7 @@ def deblur(y):
     latent_imgs = []
 
     # coarse to fine
-    for y in image_pyramid.reverse():
+    for y in reversed(image_pyramid):
 
         # TODO: potentially need to resize kernel, estimated latent, and blurred image?
 
@@ -124,13 +122,18 @@ def estimate_blur_kernel(y, k):
 def generate_image_pyramid(y):
     '''
     Repeatedly downsamples blurred image with bilinear interpolation
+    y: single image - numpy array
     '''
     img = y.copy()
+    try:
+        assert isinstance(img, np.ndarray)
+    except AssertionError:
+        img = np.array(img)
     image_pyramid = [img]
 
     # downsample for fixed number of layers
     for _ in range(5):
-        layer = cv2.pyrDown(image_pyramid[-1])
+        layer = cv2.pyrDown(np.array(image_pyramid[-1]))
         layer = cv2.pyrUp(layer)
         image_pyramid.append(layer)
 
@@ -139,88 +142,48 @@ def generate_image_pyramid(y):
 
 def init_kernel():
     '''
-    TODO: initializes kernel
+    initializes kernel
     '''
     return np.ones(kernel_size)
 
 
-def solve_kernel_with_cvxpy(y, x):
-    """
-    solve for the blur kernel by the minimization problem as a quadratic program
-    solve using cvxpy
-    """
-    import cvxpy as cp
-    k = cp.Variable(kernel_size)
-    objective = cp.Minimize(cp.norm(util.get_gradient(x) * k - util.get_gradient(y))**2 + hp.gamma * cp.norm(k)**2)
-    constraints = []
-    prob = cp.Problem(objective, constraints)
-
-    result = prob.solve()
-    return k.value
-
-
 def solve_kernel(y, x):
     '''
-    this function estimates the blur kernel efficiently in gradient space 
-    using FFT as described in https://dl.acm.org/doi/pdf/10.1145/1618452.1618491 
-    TODO: not done, paul pls help
+    this function estimates the blur kernel efficiently in gradient space using 
+    conjugate gradient method
     '''
-    dx = [[-1, 1], [0, 0]]
-    dy = [[-1, 0], [1, 0]]
+    A = util.get_gradient(x)
+    b = util.get_gradient(y)
 
-    latent_x = convolve(y, dx)
-    latent_y = convolve(y, dy)
+    def pad_and_flatten_kernel(kernel, out_size):
+        """
+        pad and flatten the kernel to a 1D array as described in Fast Motion Deblurring
+        """
+        padded_kernel = util.pad_kernel(kernel, out_size)
+        return padded_kernel.flatten()
+        
 
-    blurred_x = convolve(x, dx)
-    blurred_y = convolve(x, dy)
+    def objective_function(kernel):
+        """
+        objective function as described in equaiton (8) from Fast Motion Deblurring
+        """
+        # kernel = pad_and_flatten_kernel(kernel, y.shape)
+        return (A @ kernel - b).T @ (A @ kernel - b) + hp.gamma * kernel.T @ kernel
 
-    latent_xf = fft2(latent_x)
-    latent_yf = fft2(latent_y)
-
-    blurred_xf = fft2(blurred_x)
-    blurred_yf = fft2(blurred_y)
-
-    b_f = (np.conj(latent_xf) * blurred_xf) + (np.conj(latent_yf) * blurred_yf)
-    b = np.real(otf2psf(b_f, kernel_size))
-
-    # p.m = (np.conj(latent_xf) * latent_xf) + (np.conj(latent_yf) * latent_yf)
-    # %p.img_size = size(blurred)
-    # p.img_size = size(blurred_xf)
-    # p.psf_size = psf_size
-    # p.lambda = weight
-
-    # psf = ones(psf_size) / prod(psf_size)
-    # psf = conjgrad(psf, b, 20, 1e-5, @ compute_Ax, p)
-
-    # psf(psf < max(psf(:))*0.05) = 0
-    # psf = psf / sum(psf(: ))
-
-
-# ===== TAKEN FROM pypher ====================================
-
-
-def otf2psf(otf, psf_size):
-    # calculate psf from otf with size <= otf size
-
-    if otf.any():  # if any otf element is non-zero
-        # calculate psf
-        psf = ifftn(otf)
-        # this condition depends on psf size
-        num_small = np.log2(otf.shape[0])*4*np.spacing(1)
-        if np.max(abs(psf.imag))/np.max(abs(psf)) <= num_small:
-            psf = psf.real
-
-        # circularly shift psf
-        psf = np.roll(psf, int(np.floor(psf_size[0]/2)), axis=0)
-        psf = np.roll(psf, int(np.floor(psf_size[1]/2)), axis=1)
-
-        # crop psf
-        psf = psf[0:psf_size[0], 0:psf_size[1]]
-    else:  # if all otf elements are zero
-        psf = np.zeros(psf_size)
-    return psf
-
-# ==============================================================================
+    def get_function_gradient(kernel):
+        """
+        get the gradient as described in equation (9) from Fast Motion Deblurring
+        """
+        # kernel = pad_and_flatten_kernel(kernel, y.shape)
+        return 2 * A.T @ A @ kernel - 2 * hp.gamma * kernel - 2 * A.T @ b
+    
+    guessed_value = pad_and_flatten_kernel(np.zeros(kernel_size), y.shape)
+    solved_kernel = optimize.fmin_cg(
+        f=objective_function,
+        x0=guessed_value,
+        fprime=get_function_gradient,
+    )
+    return solved_kernel
 
 
 def remove_artifact(blur_img):
@@ -236,7 +199,7 @@ def main(data_path='data/original_images/'):
     interleave kernel and latent image estimation
     load the original images and deblur them, and plot them together
     """
-    blurred_images = parse_dataset(data_path)  # there should be 15 of them
+    ground_truth_images, blurred_images = parse_dataset(image_path='data/ieee2016/text-images/gt_images', kernel_path='data/ieee2016/text-images/kernels')  # there should be 15 of them
     for img in blurred_images:
         blur_kernel, restored_img = deblur(img)
         for latent_img in restored_img:
