@@ -1,7 +1,10 @@
-from skimage.io import imread
-import glob, os
-from cv2 import filter2D
+import os
+
 import numpy as np
+from skimage.io import imread
+from cv2 import filter2D
+
+
 """
 this file handles parsing the datasets and getting the data from the online datasets
 """
@@ -14,15 +17,17 @@ def parse_dataset(image_path, kernel_path):
     return:
         a list of ground truth images, a list of blurred images
     """
-    ims = []
+    true = []
+    blur = []
+    kernels = []
     for im in os.listdir(image_path):
         if im.endswith(".png"):
-            ims.append(imread(os.path.join(image_path, im)))
-    out = []
-    for k_path in os.listdir(kernel_path):
-        if k_path.endswith(".png"):
-            kernel = imread(os.path.join(kernel_path, k_path))
-            for im in ims:
+            im = imread(os.path.join(image_path, im), as_gray=True)
+            true.append(im)
+        for k_path in os.listdir(kernel_path):
+            if k_path.endswith(".png"):
+                kernel = imread(os.path.join(kernel_path, k_path), as_gray=True)
                 blurred = filter2D(im, -1, kernel/np.sum(kernel))
-                out.append(blurred)
-    return ims, out
+                blur.append(blurred)
+                kernels.append(kernel)
+    return true, blur, kernels
