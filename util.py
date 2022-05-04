@@ -5,6 +5,10 @@ import numpy as np
 import params as hp
 from numpy.fft import fft2, ifft2
 
+SOBEL_V = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+SOBEL_H = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+
+
 def get_gradient(img):
     """
     Computes the gradient of an image
@@ -15,7 +19,7 @@ def get_gradient(img):
         horizontal and vertical gradients, respectively
     """
     v, h, *_ = np.gradient(img)
-    return v + h
+    return np.hstack((h, v)).T
 
 
 def get_u(img, beta):
@@ -41,37 +45,24 @@ def get_g(img, miu):
     return:
         the auxiliary variable g
     """
-    grad = get_gradient(img)
-    if np.linalg.norm(grad) ** 2 >= hp.lmda / miu:
-        return grad
+    v, h, *_ = np.gradient(img)
+    if np.linalg.norm(np.hstack((h, v))) ** 2 >= hp.lmda / miu:
+        return v, h
     else:
-        return np.zeros_like(grad)
-    
-
-def get_g_gradient(g, dv, dh):
-    """
-    compute the vertical and horizontal gradient of g
-    first break up g into two components
-    """
-    if np.array_equal(g, np.zeros_like(g)):
-        return dv, dh
-    else:
-        return np.zeros_like(dv), np.zeros_like(dh)
+        return np.zeros_like(v), np.zeros_like(h)
     
 
 def pad_kernel(kernel, output_size):
     """
     pad the current kernel to the output size
     """
-    assert len(kernel.shape) == 2
+
     padded_kernel = np.pad(kernel, pad_width=((0, output_size[0] - kernel.shape[0]), (0, output_size[1] - kernel.shape[1])), mode='constant')  # pad the kernel
     # padded_kernel = np.repeat(padded_kernel[:,:,None], output_size[2], axis=2)  # add channel dimension for kernel
-
-    assert padded_kernel.shape == output_size, (kernel.shape, output_size)
     return padded_kernel
 
 
-def get_latent(u, g, latent_img, blur_img, kernel, beta, miu):
+def get_latent(u, g, blur_img, kernel, beta, miu):
     """
     Computes x according to equation 8
     args:
@@ -83,12 +74,14 @@ def get_latent(u, g, latent_img, blur_img, kernel, beta, miu):
         beta: hyperparameter
         miu: hyperparameter
     """
-    grad = get_gradient(latent_img)
-    dv, dh, *_ = np.gradient(latent_img)
-    gv, gh = get_g_gradient(g, dv, dh)
-    fg = np.conj(fft2(dh)) * fft2(gh) + np.conj(fft2(dv)) * fft2(gv)
-    img_kernel = pad_kernel(kernel, blur_img.shape)
+
+    shape = blur_img.shape
+    gv, gh = g
+    sv, sh = pad_kernel(SOBEL_V, shape), pad_kernel(SOBEL_H, shape)
+    nabla = pad_kernel(np.sqrt(SOBEL_H ** 2 + SOBEL_V ** 2), shape)
+    fg = np.conj(fft2(sh)) * fft2(gh) + np.conj(fft2(sv)) * fft2(gv)
+    img_kernel = pad_kernel(kernel, shape)
     a = np.conj(fft2(img_kernel)) * fft2(blur_img) + beta * fft2(u) + miu * fg
-    grad_kernel = pad_kernel(kernel, grad.shape)
-    b = np.conj(fft2(grad_kernel)) * fft2(grad_kernel) + beta + miu * np.conj(fft2(grad)) * fft2(grad)
-    return ifft2(a / b)
+    b = np.conj(fft2(img_kernel)) * fft2(img_kernel) + beta + miu * np.conj(fft2(nabla)) * fft2(nabla)
+    latent = ifft2(a / b)
+    return latent / np.max(latent)

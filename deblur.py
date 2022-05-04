@@ -12,7 +12,7 @@ import params as hp
 from get_data import parse_dataset
 
 
-def estimating_latent_image_with_blur_kernel(blur_img, kernel):
+def estimate_latent(blur_img, kernel):
     """
     this function estimates the latent clean image using the kernel as input
     this is algorithm 1 and section 3.1 in the paper
@@ -35,9 +35,9 @@ def estimating_latent_image_with_blur_kernel(blur_img, kernel):
             # solve for g using (11)
             g = util.get_g(latent_img, miu)
             # solve for x using (8)
-            latent_img = util.get_latent(u, g, latent_img, blur_img, kernel, beta, miu)
-            miu = 2 * miu
-        beta = 2 * beta
+            latent_img = util.get_latent(u, g, blur_img, kernel, beta, miu)
+            miu *= 2
+        beta *= 2
     return latent_img
 
 
@@ -107,7 +107,7 @@ def estimate_blur_kernel(y, k):
     for _ in range(5):
 
         # solve for x using Algorithm 1
-        x = estimating_latent_image_with_blur_kernel(y, k)
+        x = estimate_latent(y, k)
 
         # solve for k, update kernel estimate eq. (12)
         # use FFT to estimate blur kernel, look at 'estimate_psf'
