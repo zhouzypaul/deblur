@@ -1,7 +1,7 @@
-from ast import parse
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft2, ifft2
+
 from get_data import parse_dataset
 from pypher import psf2otf, zero_pad
 import params as hp
@@ -30,13 +30,16 @@ def estimate_latent(blur_img, kernel):
         while miu < hp.miu_max:
             fg = compute_fg(latent, miu)
             nom = ker_latent + beta * fft2(u) + miu * fft2(fg)
-            denom = ker_ker + miu * nablas + beta
+            denom = ker_ker + beta + miu * nablas
             latent = np.real(ifft2(nom / denom))
             miu *= 2
 
         beta *= 2
 
     return latent
+
+def estimate_kernel():
+    latent_xf = fft2(l)
 
 
 def solve_u(latent, beta):
