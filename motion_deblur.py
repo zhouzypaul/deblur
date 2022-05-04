@@ -63,14 +63,27 @@ def compute_fg(latent, miu):
 
     return h_component + v_component
 
-def main():
-    clear, blur = parse_dataset(image_path='data/ieee2016/text-images/gt_images', kernel_path='data/ieee2016/text-images/kernels')
+def main(data_path='data/ieee2016/text-images/'):
+    images_path = data_path + 'gt_images'
+    kernels_path = data_path + 'kernels'
+    clear, blur, kernels = parse_dataset(images_path, kernels_path)
     # for img in blur:
     #     kernel, res = deblur(img)
     #     plt.imshow(res, cmap='gray')
     #     plt.show()
 
-    res = estimate_latent(blur[0], np.ones((15, 15)))
+    fig = plt.figure()
+
+    ker_ind = 3
+    img = 13
+    img_ind = 8 * img + ker_ind
+    res = estimate_latent(blur[img_ind], kernels[ker_ind])
+
+    fig.add_subplot(1, 3, 1)
+    plt.imshow(blur[img_ind], cmap='gray')
+    fig.add_subplot(1, 3, 2)
+    plt.imshow(kernels[ker_ind], cmap='gray')
+    fig.add_subplot(1, 3, 3)
     plt.imshow(res, cmap='gray')
     plt.show()
 
