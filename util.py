@@ -83,5 +83,5 @@ def get_latent(u, g, blur_img, kernel, beta, miu):
     img_kernel = pad_kernel(kernel, shape)
     a = np.conj(fft2(img_kernel)) * fft2(blur_img) + beta * fft2(u) + miu * fg
     b = np.conj(fft2(img_kernel)) * fft2(img_kernel) + beta + miu * np.conj(fft2(nabla)) * fft2(nabla)
-    latent = ifft2(a / b)
+    latent = np.real(ifft2(a / b))
     return latent / np.max(latent)
