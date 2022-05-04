@@ -38,9 +38,6 @@ def estimate_latent(blur_img, kernel):
 
     return latent
 
-def estimate_kernel():
-    latent_xf = fft2(l)
-
 
 def solve_u(latent, beta):
     threshold = hp.lmda * hp.sigma / beta
