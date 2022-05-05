@@ -18,6 +18,7 @@ Example:
 """
 
 import numpy as np
+from scipy.fft import fft2, ifft2
 
 def zero_pad(image, shape, position='corner'):
     """
@@ -108,7 +109,7 @@ def psf2otf(psf, shape):
         psf = np.roll(psf, -int(axis_size / 2), axis=axis)
 
     # Compute the OTF
-    otf = np.fft.fft2(psf)
+    otf = fft2(psf)
 
     # Estimate the rough number of operations involved in the FFT
     # and discard the PSF imaginary part if within roundoff error
@@ -118,3 +119,26 @@ def psf2otf(psf, shape):
     otf = np.real_if_close(otf, tol=n_ops)
 
     return otf
+
+
+def otf2psf(otf, psf_size):
+# calculate psf from otf with size <= otf size
+
+    if otf.any(): # if any otf element is non-zero
+        # calculate psf     
+        psf = ifft2(otf)
+        # this condition depends on psf size    
+        num_small = np.log2(otf.shape[0])*4*np.spacing(1)    
+        if np.max(abs(psf.imag))/np.max(abs(psf)) <= num_small:
+            psf = psf.real 
+        
+        # circularly shift psf
+        psf = np.roll(psf, int(np.floor(psf_size[0]/2)), axis=0)    
+        psf = np.roll(psf, int(np.floor(psf_size[1]/2)), axis=1) 
+        
+        # crop psf
+        psf = psf[0:psf_size[0], 0:psf_size[1]]
+    else: # if all otf elements are zero
+        psf = np.zeros(psf_size)
+
+    return psf

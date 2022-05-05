@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft2, ifft2
+from scipy.signal import convolve2d
+from conjugate_gradient import conjugate_gradient
 
 from get_data import parse_dataset
-from pypher import psf2otf, zero_pad
+from pypher import otf2psf, psf2otf, zero_pad
 import params as hp
 
 def deblur(img):
@@ -39,6 +41,33 @@ def estimate_latent(blur_img, kernel):
     return latent
 
 
+def estimate_kernel(latent_img, blur_img, weight, psf_size):
+    # derivative kernels
+    dx = np.array([[-1, 1], [0, 0]])
+    dy = np.array([[-1, 0], [1, 0]])
+
+    lxf = fft2(convolve2d(latent_img, dx, mode='valid'))
+    lyf = fft2(convolve2d(latent_img, dy, mode='valid'))
+
+    bxf = fft2(convolve2d(blur_img, dx, mode='valid'))
+    byf = fft2(convolve2d(blur_img, dy, mode='valid'))
+
+    b_f = np.conj(lxf) * bxf + np.conj(lyf) * byf
+    b = np.real(otf2psf(b_f, psf_size))
+
+    p = {}
+    p['m'] = np.conj(lxf) * lxf + np.conj(lyf) * lyf
+    p['img_size'] = np.shape(bxf)
+    p['psf_size'] = psf_size
+    p['lmda'] = weight
+
+    psf = np.ones(psf_size) / np.prod(psf_size)
+    psf = conjugate_gradient(psf, b, 20, 1e-5, compute_ax, p)
+    
+    psf = np.where(psf >= 0.05 * np.max(psf), psf, 0)
+    psf /= np.sum(psf)
+
+
 def solve_u(latent, beta):
     threshold = hp.lmda * hp.sigma / beta
     return np.where(latent ** 2 >= threshold, latent, 0)
@@ -62,6 +91,13 @@ def compute_fg(latent, miu):
     v_component = np.vstack((gv_diff, -np.diff(gv, axis=0)))
 
     return h_component + v_component
+
+
+def compute_ax(x, p):
+    xf = psf2otf(x, p['img_size'])
+    y = otf2psf(p['m'] * xf, p['psf_size'])
+    y = y + p['lmda'] * x
+
 
 def main(data_path='data/ieee2016/text-images/'):
     images_path = data_path + 'gt_images'
