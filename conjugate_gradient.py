@@ -17,5 +17,7 @@ def conjugate_gradient(x, b, max_it, tol, ax_func, func_param):
 
         p = r + rsnew / rsold * p
         rsold = rsnew
+    
+    return x
 
 
