@@ -24,10 +24,12 @@ def parse_dataset(image_path, kernel_path):
         if im.endswith(".png"):
             im = imread(os.path.join(image_path, im), as_gray=True)
             true.append(im)
+        img_blurs = []
         for k_path in os.listdir(kernel_path):
             if k_path.endswith(".png"):
                 kernel = imread(os.path.join(kernel_path, k_path), as_gray=True)
                 blurred = filter2D(im, -1, kernel/np.sum(kernel))
-                blur.append(blurred)
+                img_blurs.append(blurred)
                 kernels.append(kernel)
+        blur.append(img_blurs)
     return true, blur, kernels
