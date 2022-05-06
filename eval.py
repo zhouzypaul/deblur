@@ -1,13 +1,13 @@
 """
 this file handles the evaluation of the debluring methods
 """
-from cv2 import blur
 from matplotlib import pyplot as plt
 from get_data import parse_dataset
 import numpy as np
 
+from motion_deblur import deblur
 
-def get_average_psnr(img):
+def get_average_psnr(results, truth):
     """
     this function calculates the average psnr of an image
     args:
@@ -15,23 +15,44 @@ def get_average_psnr(img):
     return:
         the average psnr
     """
-    # TODO: Alan
-    return 10
+    values = []
+    for img in results:
+        values.append(psnr(img, truth))
+    return np.mean(np.asarray(values))
 
 
-def main(data_path='data/original_images/', kernel_path='data/kernels/'):
+def psnr(result, truth):
+    mse = np.mean((truth.astype(np.uint8) - result.astype(np.uint8)) ** 2)
+    if mse == 0: return 100
+    return 20 * np.log10(255 / np.sqrt(mse))
+
+
+def main():
     """
     plot the results of average psnr
     """
-    truth_images, blurred_images = parse_dataset(data_path, kernel_path)
-    psnr = []
+    image_path = 'data/ieee2016/text-images/gt_images'
+    kernel_path = 'data/ieee2016/text-images/kernels'
+    truth_images, blurred_images = parse_dataset(image_path, kernel_path) 
+    results = []
+    values = []
     labels = []
 
-    for i, img in enumerate(blurred_images):
-        psnr.append(get_average_psnr(img))
+    for imgs in blurred_images:
+        img_results = []
+        for img, _ in imgs:
+            latent, _ = deblur(img)
+            img_results.append(latent)
+        results.append(img_results)
+
+    for i, (imgs, truth) in enumerate(zip(results, truth_images)):
+        print("Computing average psnr for image {}".format(i))
+        values.append(get_average_psnr(imgs, truth))
         labels.append(str(i + 1))
 
-    plt.bar(labels, psnr)
+    plt.bar(labels, values)
+    plt.ylabel("Average PSNR")
+    plt.xlabel("Image Number")
     plt.show()
 
 

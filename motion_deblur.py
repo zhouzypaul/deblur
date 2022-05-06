@@ -77,7 +77,7 @@ def deblur(y):
     k = estimate_kernel(x, y, hp.lmda, kernel_size)
     latent_imgs.append(final_deblurred)
 
-    return k, latent_imgs[-1]
+    return latent_imgs[-1], k
 
 
 def estimate_latent(blur_img, kernel):
@@ -202,7 +202,7 @@ def main():
     for ground_truth, blurs in zip(ground_truth_images, blurred_images):
         rind = np.random.randint(len(blurs))
         blur_img, kernel = blurs[rind]
-        est_kernel, latent = deblur(blur_img)
+        latent, est_kernel = deblur(blur_img)
         visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
 
 if __name__ == '__main__':
