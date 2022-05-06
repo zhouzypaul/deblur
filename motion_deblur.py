@@ -17,7 +17,7 @@ def init_kernel():
     '''
     initializes kernel
     '''
-    return np.ones(kernel_size)
+    return np.ones(kernel_size) / np.prod(kernel_size)
 
 
 def generate_image_pyramid(y):
