@@ -169,38 +169,24 @@ def compute_ax(x, p):
     return y
 
 
-def show_latent_image(data_path='data/ieee2016/text-images/'):
-    images_path = data_path + 'gt_images'
-    kernels_path = data_path + 'kernels'
-    clear, blur, kernels = parse_dataset(images_path, kernels_path)
-
+def visualize_results(original, blurred, deblurred, kernel, est_kernel):
     fig = plt.figure()
-
-    ker_ind = 3
-    img = 13
-    img_ind = 8 * img + ker_ind
-    res = estimate_latent(blur[img_ind], kernels[ker_ind])
-
-    fig.add_subplot(1, 3, 1)
-    plt.imshow(blur[img_ind], cmap='gray')
-    fig.add_subplot(1, 3, 2)
-    plt.imshow(kernels[ker_ind], cmap='gray')
-    fig.add_subplot(1, 3, 3)
-    plt.imshow(res, cmap='gray')
-    plt.show()
-
-
-def visualize_original_blurred_deblurred(original, blurred, deblurred):
-    fig = plt.figure()
-    fig.add_subplot(3, 1, 1)
+    fig.add_subplot(2, 3, 1)
     plt.title('Original')
     plt.imshow(original, cmap='gray')
-    fig.add_subplot(3, 1, 2)
+    fig.add_subplot(2, 3, 2)
     plt.title('Blurred')
     plt.imshow(blurred, cmap='gray')
-    fig.add_subplot(3, 1, 3)
+    fig.add_subplot(2, 3, 3)
     plt.title('Deblurred')
     plt.imshow(deblurred, cmap='gray')
+    fig.add_subplot(2, 3, 4)
+    plt.title('Kernel')
+    plt.imshow(kernel, cmap='gray')
+    fig.add_subplot(2, 3, 5)
+    plt.title('Estimated Kernel')
+    plt.imshow(est_kernel, cmap='gray')
+    plt.tight_layout()
     plt.show()
     plt.close()
 
@@ -210,11 +196,14 @@ def main():
     interleave kernel and latent image estimation
     load the original images and deblur them, and plot them together
     """
-    ground_truth_images, blurred_images, kernels = parse_dataset(image_path='data/ieee2016/text-images/gt_images', kernel_path='data/ieee2016/text-images/kernels')  # there should be 15 of them
+    image_path = 'data/ieee2016/text-images/gt_images'
+    kernel_path = 'data/ieee2016/text-images/kernels'
+    ground_truth_images, blurred_images = parse_dataset(image_path, kernel_path)  # there should be 15 of them
     for ground_truth, blurs in zip(ground_truth_images, blurred_images):
-        for blur in blurs:
-            kernel, res = deblur(blur)
-            visualize_original_blurred_deblurred(ground_truth, blur, res)
+        rind = np.random.randint(len(blurs))
+        blur_img, kernel = blurs[rind]
+        est_kernel, latent = deblur(blur_img)
+        visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
 
 if __name__ == '__main__':
     main()
