@@ -6,7 +6,7 @@ from scipy.signal import convolve2d
 
 from conjugate_gradient import conjugate_gradient
 from get_data import parse_dataset
-from pypher import otf2psf, psf2otf, zero_pad
+from pypher import otf2psf, psf2otf
 import params as hp
 
 """
@@ -49,7 +49,7 @@ def deblur(blur_img):
 
     k = cv2.rotate(k, cv2.ROTATE_180)
 
-    return latent_imgs[-1], k
+    return final_deblurred, k
 
 
 def estimate_blur_kernel(blur_img, kernel):
@@ -283,17 +283,12 @@ def main():
     kernel_path = 'data/ieee2016/text-images/kernels'
     ground_truth_images, blurred_images = parse_dataset(
         image_path, kernel_path)  # there should be 15 of them
-    # for ground_truth, blurs in zip(ground_truth_images, blurred_images):
-    #     rind = np.random.randint(len(blurs))
-    #     blur_img, kernel = blurs[0]
-    #     latent, est_kernel = deblur(blur_img)
-    #     visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
 
-    ground_truth, blurs = ground_truth_images[1], blurred_images[1]
-    rind = np.random.randint(len(blurs))
-    blur_img, kernel = blurs[1]
-    latent, est_kernel = deblur(blur_img)
-    visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
+    for ground_truth, blurs in zip(ground_truth_images, blurred_images):
+        rind = np.random.randint(len(blurs))
+        blur_img, kernel = blurs[rind]
+        latent, est_kernel = deblur(blur_img)
+        visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
 
 
 if __name__ == '__main__':
