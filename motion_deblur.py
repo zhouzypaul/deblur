@@ -9,11 +9,19 @@ from get_data import parse_dataset
 from pypher import otf2psf, psf2otf, zero_pad
 import params as hp
 
+"""
+Deblurs images based on iterative latent image and blur kernel estimation
+"""
+
 
 def init_kernel(kernel_size):
     '''
-    initializes kernel
-    '''
+     Initializes kernel estimate
+     args:
+         kernel_size: size of kernel to estimate
+     returns:
+         kernel: 2d np array
+     '''
     n, _ = kernel_size
     kernel = np.zeros(kernel_size)
     mid = (n - 1) // 2
@@ -24,7 +32,10 @@ def init_kernel(kernel_size):
 def generate_image_pyramid(y):
     '''
     Repeatedly downsamples blurred image with bilinear interpolation
-    y: single image - numpy array
+    args:
+        y: single image - numpy array
+    returns:
+        list of images - list of numpy arrays
     '''
     img = y.copy()
     try:
@@ -83,6 +94,15 @@ def deblur(y):
 
 
 def estimate_latent(blur_img, kernel):
+    '''
+    Solves for latent image using Algorithm 1.
+
+    args:
+        blur_img: blurred image
+        kernel: estimated blur kernel
+    return:
+        estimated latent image
+    '''
     latent = blur_img
     out_shape = blur_img.shape
 
@@ -112,6 +132,17 @@ def estimate_latent(blur_img, kernel):
 
 
 def estimate_kernel(latent_img, blur_img, weight, psf_size):
+    '''
+    Solve for blur kernel using Algorithm 12
+
+    args:
+        latent_img: latent image
+        blur_img: blur image
+        weight: weight
+        psf_size: size of kernel to estimate
+    return:
+        estimated kernel
+    '''
     # derivative kernels
     dx = np.array([[-1, 1], [0, 0]])
     dy = np.array([[-1, 0], [1, 0]])
@@ -133,21 +164,32 @@ def estimate_kernel(latent_img, blur_img, weight, psf_size):
 
     psf = np.ones(psf_size) / np.prod(psf_size)
     psf = conjugate_gradient(psf, b, 20, 1e-5, compute_ax, p)
-    
+
     psf = np.where(psf >= 0.05 * np.max(psf), psf, 0)
     psf /= np.sum(psf)
     return psf
 
 
 def solve_u(latent, beta):
+    '''
+    Solve intermediate step in Algorithm 1
+    '''
     threshold = hp.lmda * hp.sigma / beta
     return np.where(latent ** 2 >= threshold, latent, 0)
 
+
 def solve_g(h, v, miu):
+    '''
+    Solve intermediate step in Algorithm 1
+    '''
     condition = h ** 2 + v ** 2 >= hp.lmda / miu
     return np.where(condition, h, 0), np.where(condition, v, 0)
 
+
 def compute_fg(latent, miu):
+    '''
+    Compute intermediate step in Algorithm 1
+    '''
     # compute horizontal and vertical gradients to solve for g
     h_diff = latent[:, 0] - latent[:, -1]
     h = np.hstack((np.diff(latent, axis=1), h_diff[:, None]))
@@ -165,10 +207,19 @@ def compute_fg(latent, miu):
 
 
 def compute_ax(x, p):
+    '''
+    Computes Ap term for system of linear equations
+
+    args:
+        x: x from Ax=b
+        p: dict of function parameterss
+    returns:
+        Axpterm
+    '''
     xf = psf2otf(x, p['img_size'])
-    y = otf2psf(p['m'] * xf, p['psf_size'])
-    y = y + p['lmda'] * x
-    return y
+    ap = otf2psf(p['m'] * xf, p['psf_size'])
+    ap += p['lmda'] * x
+    return ap
 
 
 def visualize_results(original, blurred, deblurred, kernel, est_kernel):
@@ -200,12 +251,14 @@ def main():
     """
     image_path = 'data/ieee2016/text-images/gt_images'
     kernel_path = 'data/ieee2016/text-images/kernels'
-    ground_truth_images, blurred_images = parse_dataset(image_path, kernel_path)  # there should be 15 of them
+    ground_truth_images, blurred_images = parse_dataset(
+        image_path, kernel_path)  # there should be 15 of them
     for ground_truth, blurs in zip(ground_truth_images, blurred_images):
         rind = np.random.randint(len(blurs))
         blur_img, kernel = blurs[rind]
         latent, est_kernel = deblur(blur_img)
         visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
+
 
 if __name__ == '__main__':
     main()
