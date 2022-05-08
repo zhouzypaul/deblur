@@ -211,16 +211,25 @@ def threshold_image(x):
 
 
 def solve_u(latent, beta):
+    '''
+    Solve intermediate step in Algorithm 1
+    '''
     threshold = hp.lmda * hp.sigma / beta
     return np.where(latent ** 2 >= threshold, latent, 0)
 
 
 def solve_g(h, v, miu):
+    '''
+    Solve intermediate step in Algorithm 1
+    '''
     condition = h ** 2 + v ** 2 >= hp.lmda / miu
     return np.where(condition, h, 0), np.where(condition, v, 0)
 
 
 def compute_fg(latent, miu):
+    '''
+    Compute intermediate step in Algorithm 1
+    '''
     # compute horizontal and vertical gradients to solve for g
     h_diff = latent[:, 0] - latent[:, -1]
     h = np.hstack((np.diff(latent, axis=1), h_diff[:, None]))
@@ -238,10 +247,19 @@ def compute_fg(latent, miu):
 
 
 def compute_ax(x, p):
+    '''
+    Computes Ap term for system of linear equations
+
+    args:
+        x: x from Ax=b
+        p: dict of function parameterss
+    returns:
+        Axpterm
+    '''
     xf = psf2otf(x, p['img_size'])
-    y = otf2psf(p['m'] * xf, p['psf_size'])
-    y = y + p['lmda'] * x
-    return y
+    ap = otf2psf(p['m'] * xf, p['psf_size'])
+    ap += p['lmda'] * x
+    return ap
 
 
 def visualize_results(original, blurred, deblurred, kernel, est_kernel):
