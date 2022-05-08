@@ -16,11 +16,11 @@ Deblurs images based on iterative latent image and blur kernel estimation
 
 def deblur(blur_img):
     """
-    this function deblurs an image by eestimating the blur kernel using 
+    deblurs an image by eestimating the blur kernel using 
     a coarse-to-fine image pyramid approach
-    this is section 3.2 in the paper
+
     args:
-        y: the blur image
+        blur_img: the blur image
     return:
         final blur kernel and list of estimated latent images
     """
@@ -54,8 +54,9 @@ def deblur(blur_img):
 
 def estimate_blur_kernel(blur_img, kernel):
     """
-    this function estimates the blur kernel using an interative process as
+    estimates the blur kernel using an interative process as
     outlined in Algorithm 2 of the paper
+
     args:
         blur_img: the blur image
         kernel: the blur kernel estimate
@@ -82,6 +83,15 @@ def estimate_blur_kernel(blur_img, kernel):
 
 
 def solve_latent(blur_img, kernel):
+    """
+    solves for the latent image according to algorithm 1
+
+    args:
+        blur_img: the blur image
+        kernel: the blur kernel estimate
+    return:
+        intermediate latent image
+    """
     latent = blur_img
     out_shape = blur_img.shape
 
@@ -114,6 +124,7 @@ def solve_kernel(latent_img, blur_img, weight):
     """
     this function estimates the blur kernel using an interative process as
     outlined in Algorithm 2 of the paper
+
     args:
         y: the blur image
         k: the blur kernel estimate
@@ -199,7 +210,13 @@ def generate_image_pyramid(y):
 
 def solve_u(latent, beta):
     '''
-    Solve intermediate step in Algorithm 1
+    Solve for u in Algorithm 1
+
+    args:
+        latent: the latent image
+        beta: hyperparameter
+    returns:
+        u as described in the paper
     '''
     threshold = hp.lmda * hp.sigma / beta
     return np.where(latent ** 2 >= threshold, latent, 0)
@@ -207,7 +224,14 @@ def solve_u(latent, beta):
 
 def solve_g(h, v, miu):
     '''
-    Solve intermediate step in Algorithm 1
+    Solve for g in Algorithm 1
+
+    args:
+        h: horizontal component
+        v: vertical component
+        miu: hyperparameter
+    returns:
+        g as described in the paper
     '''
     condition = h ** 2 + v ** 2 >= hp.lmda / miu
     return np.where(condition, h, 0), np.where(condition, v, 0)
@@ -215,7 +239,7 @@ def solve_g(h, v, miu):
 
 def compute_fg(latent, miu):
     '''
-    Compute intermediate step in Algorithm 1
+    Compute F_G for Algorithm 1
     '''
     # compute horizontal and vertical gradients to solve for g
     h_diff = latent[:, 0] - latent[:, -1]
