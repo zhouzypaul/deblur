@@ -13,7 +13,7 @@ def conjugate_gradient(x, b, max_it, tol, ax_func, func_param):
         b: known b from Ax = b
         max_it: maximum number of iterations
         tol: residual tolerance
-        ax_func: defines the relationship Ax = b
+        ax_func: calculates Ap, multiplication between A and conjugate basis vectors
         fund_param: parameters to ax_fund
     return:
         x which solves Ax = b
