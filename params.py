@@ -16,3 +16,6 @@ beta_max = 2**3
 
 # latent image estimation intermediate convergence condition
 miu_max = 1e5
+
+# kernel size
+kernel_size = (27, 27)
