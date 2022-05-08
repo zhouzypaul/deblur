@@ -1,11 +1,13 @@
-"""
-this file handles the evaluation of the debluring methods
-"""
 from matplotlib import pyplot as plt
 from get_data import parse_dataset
 import numpy as np
 
 from motion_deblur import deblur
+
+"""
+this file handles the evaluation of the debluring methods
+"""
+
 
 def get_average_psnr(results, truth):
     """
@@ -15,16 +17,16 @@ def get_average_psnr(results, truth):
     return:
         the average psnr
     """
+    def psnr(result, truth):
+        mse = np.mean((truth.astype(np.uint8) - result.astype(np.uint8)) ** 2)
+        if mse == 0:
+            return 100
+        return 20 * np.log10(255 / np.sqrt(mse))
+
     values = []
     for img in results:
         values.append(psnr(img, truth))
     return np.mean(np.asarray(values))
-
-
-def psnr(result, truth):
-    mse = np.mean((truth.astype(np.uint8) - result.astype(np.uint8)) ** 2)
-    if mse == 0: return 100
-    return 20 * np.log10(255 / np.sqrt(mse))
 
 
 def main():
@@ -33,7 +35,7 @@ def main():
     """
     image_path = 'data/ieee2016/text-images/gt_images'
     kernel_path = 'data/ieee2016/text-images/kernels'
-    truth_images, blurred_images = parse_dataset(image_path, kernel_path) 
+    truth_images, blurred_images = parse_dataset(image_path, kernel_path)
     results = []
     values = []
     labels = []
