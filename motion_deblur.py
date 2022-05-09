@@ -1,18 +1,18 @@
+import os
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft2, ifft2
-from scipy.signal import convolve2d
+from scipy.signal import convolve2d, convolve
+from scipy.optimize import minimize
+from skimage.color import rgb2gray
 
 from conjugate_gradient import conjugate_gradient
 from get_data import parse_dataset
 from pypher import otf2psf, psf2otf
 import params as hp
-import os
-from cv2 import filter2D
-from scipy.signal import convolve
-from scipy.optimize import minimize
-from skimage.color import rgb2gray
+
 
 """
 Deblurs images based on iterative latent image and blur kernel estimation
@@ -21,7 +21,7 @@ Deblurs images based on iterative latent image and blur kernel estimation
 
 def deblur(blur_img):
     """
-    deblurs an image by eestimating the blur kernel using
+    deblurs an image by estimating the blur kernel using
     a coarse-to-fine image pyramid approach
 
     args:
@@ -301,14 +301,19 @@ def visualize_results(original, blurred, deblurred, kernel, est_kernel):
 
 
 # ==============================================================================
+# remove artifacts
 def min_w(w, beta, v, a):
     return np.power(np.abs(w), a)+(beta/2.0)*np.power(w-v, 2)
+
+
 def snr(im1, im2):
     im1 = im1.reshape((-1, im1.shape[2]))
     im2 = im2.reshape((-1, im2.shape[2]))
     mean = np.sum(im1, axis=0)/len(im1)
     avgs = np.sum(np.square(im1-mean), axis=0)/np.sum(np.square(im1-im2), axis=0)
     return np.sum(avgs)/im1.shape[1]
+
+    
 def get_LUT(a):
     if os.path.exists(f"LUT-{a}.npy"):
         table = np.load(f"LUT-{a}.npy")
@@ -328,14 +333,20 @@ def get_LUT(a):
                 table[i, j] = sol.x[0]
         np.save(f"LUT-{a}", table)
     return table
+
+
 def solve_w(x, beta, f1, f2, LUT):
     v1, v2 = convolve(x, np.repeat(f1[:,:,None], x.shape[2], axis=2), mode="same"), convolve(x, np.repeat(f2[:,:,None], x.shape[2], axis=2), mode="same")
     v1, v2 = np.clip(v1, -0.6, 0.6), np.clip(v2, -0.6, 0.6)
     w1 = LUT[np.clip(np.searchsorted(np.linspace(-0.6, 0.6, num=10000), v1), 0, 10000-1), (np.searchsorted(np.power(np.sqrt(2), np.arange(16)), beta)*np.ones(v1.shape)).astype(np.int32)]
     w2 = LUT[np.clip(np.searchsorted(np.linspace(-0.6, 0.6, num=10000), v2), 0, 10000-1), (np.searchsorted(np.power(np.sqrt(2), np.arange(16)), beta)*np.ones(v1.shape)).astype(np.int32)]
     return w1, w2
+
+
 def pad_evenly(desiredshape, arr):
     return np.pad(arr, pad_width=((np.floor((desiredshape[0]-arr.shape[0])/2).astype(int), np.ceil((desiredshape[0]-arr.shape[0])/2).astype(int)), (np.floor((desiredshape[1]-arr.shape[1])/2).astype(int), np.ceil((desiredshape[1]-arr.shape[1])/2).astype(int))))
+
+
 def remove_artifact(blur_img, k, l):
     """
     this removes the artifacts as detailed in section 3.3 of the paper
@@ -350,9 +361,8 @@ def remove_artifact(blur_img, k, l):
     x = y
     k = k/np.sum(k)
     k = k[::-1,::-1]
-    korig = k.shape
     f1, f2 = np.array([[1,-1]]), np.array([[1],[-1]])
-    fftsize = (x.shape[0]+k.shape[0]+f1.shape[0]+f2.shape[0], x.shape[1]+k.shape[1]+f1.shape[1]+f2.shape[1])
+    fftsize = (x.shape[0] + k.shape[0] + f1.shape[0] + f2.shape[0], x.shape[1] + k.shape[1] + f1.shape[1] + f2.shape[1])
     fftsize = np.power(2, np.ceil(np.log2(fftsize))).astype(int)
     f1fft, f2fft = np.fft.fft2(f1, axes=(0, 1), s=fftsize), np.fft.fft2(f2, axes=(0, 1), s=fftsize)
     kfft = np.fft.fft2(k, axes=(0, 1), s=fftsize)
@@ -361,7 +371,7 @@ def remove_artifact(blur_img, k, l):
     while beta < bmax:
         w1, w2 = solve_w(x, beta, f1, f2, LUT)
         w1fft, w2fft = np.fft.fft2(w1, axes=(0, 1), s=fftsize), np.fft.fft2(w2, axes=(0, 1), s=fftsize)
-        x = np.fft.ifft2((np.conjugate(f1fft)*w1fft+np.conjugate(f2fft)*w2fft+(l/beta)*np.conjugate(kfft)*yfft)/(np.conjugate(f1fft)*f1fft+np.conjugate(f2fft)*f2fft+(l/beta)*np.conjugate(kfft)*kfft), axes=(0, 1))[0:y.shape[0],0:y.shape[1]].real
+        x = np.fft.ifft2((np.conjugate(f1fft) * w1fft + np.conjugate(f2fft) * w2fft + (l/beta) * np.conjugate(kfft)*yfft) / (np.conjugate(f1fft) * f1fft + np.conjugate(f2fft) * f2fft + (l/beta) * np.conjugate(kfft) * kfft), axes=(0, 1))[0:y.shape[0],0:y.shape[1]].real
         #x = np.fft.ifft2((np.conjugate(f1fft)+np.conjugate(f2fft)+(l/beta)*np.conjugate(kfft)*yfft)/(np.conjugate(f1fft)*f1fft+np.conjugate(f2fft)*f2fft+(l/beta)*np.conjugate(kfft)*kfft), axes=(0, 1))[0:y.shape[0],0:y.shape[1]].real
         x = np.clip(x, 0, 1)
         beta = binc*beta
