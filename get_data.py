@@ -1,5 +1,6 @@
 import os
 
+import cv2
 import numpy as np
 from skimage.io import imread
 from cv2 import filter2D
@@ -53,6 +54,12 @@ def parse_kaggle_blur_data(image_path='data/kaggle_blur', num_images=10):
         new_stem = stem[:-1] + 'M'
         new_file = new_stem + extension
         return os.path.join(motion_blur_path, new_file)
+    
+    def read_and_downsize_img(img_path, scale=0.1):
+        img = imread(img_path)
+        width = int(img.shape[1] * scale)
+        height = int(img.shape[0] * scale)
+        return cv2.resize(img, (width, height))
 
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"{image_path} does not exist. Please download the dataset from https://www.kaggle.com/datasets/kwentar/blur-dataset?resource=download. Put the dataset in data/kaggle_blur")
@@ -64,9 +71,9 @@ def parse_kaggle_blur_data(image_path='data/kaggle_blur', num_images=10):
     all_images = os.listdir(sharp_path)
     chosen_images = [all_images[i] for i in range(num_images)]
     
-    sharp_images = [imread(os.path.join(sharp_path, im)) for im in chosen_images]
-    defocused_blur_images = [imread(_defocused_blur_img_path(im)) for im in chosen_images]
-    motion_blur_images = [imread(_motion_blur_img_path(im)) for im in chosen_images]
+    sharp_images = [read_and_downsize_img(os.path.join(sharp_path, im)) for im in chosen_images]
+    defocused_blur_images = [read_and_downsize_img(_defocused_blur_img_path(im)) for im in chosen_images]
+    motion_blur_images = [read_and_downsize_img(_motion_blur_img_path(im)) for im in chosen_images]
     return sharp_images, defocused_blur_images, motion_blur_images
 
 

@@ -1,4 +1,5 @@
 import os
+import argparse
 
 import cv2
 import numpy as np
@@ -278,23 +279,58 @@ def compute_ax(x, p):
     return ap
 
 
-def visualize_results(original, blurred, deblurred, kernel, est_kernel):
+def visualize_text_deblurs(original, blurred, deblurred, kernel, est_kernel):
     fig = plt.figure()
     fig.add_subplot(2, 3, 1)
     plt.title('Original')
     plt.imshow(original, cmap='gray')
+
     fig.add_subplot(2, 3, 2)
     plt.title('Blurred')
     plt.imshow(blurred, cmap='gray')
+
     fig.add_subplot(2, 3, 3)
     plt.title('Deblurred')
     plt.imshow(deblurred, cmap='gray')
+
     fig.add_subplot(2, 3, 4)
     plt.title('Kernel')
     plt.imshow(kernel, cmap='gray')
+
     fig.add_subplot(2, 3, 5)
     plt.title('Estimated Kernel')
     plt.imshow(est_kernel, cmap='gray')
+
+    plt.tight_layout()
+    plt.show()
+    plt.close()
+
+
+def visualize_kaggle_deblurs(sharp, defocused, motioned, defocused_latent, motioned_latent):
+    """
+    visualize the debluring results for the kaggle dataset
+    """
+    fig = plt.figure()
+    fig.add_subplot(2, 3, 1)
+    plt.title('Original')
+    plt.imshow(sharp)
+
+    fig.add_subplot(2, 3, 2)
+    plt.title('Defocus Blur')
+    plt.imshow(defocused)
+
+    fig.add_subplot(2, 3, 3)
+    plt.title('Motion Blur')
+    plt.imshow(motioned)
+
+    fig.add_subplot(2, 3, 4)
+    plt.title('Defocus Blur Deblurred')
+    plt.imshow(defocused_latent)
+
+    fig.add_subplot(2, 3, 5)
+    plt.title('Motion Blur Deblurred')
+    plt.imshow(motioned_latent)
+
     plt.tight_layout()
     plt.show()
     plt.close()
@@ -383,21 +419,41 @@ def main():
     interleave kernel and latent image estimation
     load the original images and deblur them, and plot them together
     """
-    image_path = 'data/ieee2016/text-images/gt_images'
-    kernel_path = 'data/ieee2016/text-images/kernels'
-    ground_truth_images, blurred_images = parse_ieee_dataset(
-        image_path, kernel_path)  # there should be 15 of them
+    # argparse 
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument('--data', type=str, default='ieee', choices=['ieee', 'kaggle'],
+                        help='which dataset to use')
+    parser.add_argument('--data_dir', type=str, default='data',
+                        help='directory to store the data')
+    args = parser.parse_args()
+    
+    if args.data == 'ieee':
+        image_path = 'data/ieee2016/text-images/gt_images'
+        kernel_path = 'data/ieee2016/text-images/kernels'
+        ground_truth_images, blurred_images = parse_ieee_dataset(image_path, kernel_path)  # there should be 15 of them
+        for ground_truth, blurs in zip(ground_truth_images, blurred_images):
+            rind = np.random.randint(len(blurs))
+            blur_img, kernel = blurs[rind]
+            latent, est_kernel = deblur(rgb2gray(blur_img))
+            visualize_text_deblurs(ground_truth, blur_img, latent, kernel, est_kernel)
+            ls = [10, 100, 1000, 10000, 100000, 1000000, 10000000]
+            for l in ls:
+                x = remove_artifact(blur_img, est_kernel, l)
+                plt.imshow(x)
+                plt.show()
 
-    for ground_truth, blurs in zip(ground_truth_images, blurred_images):
-        rind = np.random.randint(len(blurs))
-        blur_img, kernel = blurs[rind]
-        latent, est_kernel = deblur(rgb2gray(blur_img))
-        visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
-        ls = [10, 100, 1000, 10000, 100000, 1000000, 10000000]
-        for l in ls:
-            x = remove_artifact(blur_img, est_kernel, l)
-            plt.imshow(x)
-            plt.show()
+    elif args.data == 'kaggle':
+        dataset_path = os.path.join(args.data_dir, 'kaggle_blur')
+        sharps, defocused_blurs, motion_blurs = parse_kaggle_blur_data(dataset_path)
+        for sharp, defocused, motion in zip(sharps, defocused_blurs, motion_blurs):
+            _, defocused_kernel = deblur(rgb2gray(defocused))
+            _, motion_kernel = deblur(rgb2gray(motion))
+            regularization_param = 10**6
+            defocused_latent = remove_artifact(defocused, defocused_kernel, regularization_param)
+            motion_latent = remove_artifact(motion, motion_kernel, regularization_param)
+            visualize_kaggle_deblurs(sharp, defocused, motion, defocused_latent, motion_latent)
 
 
 if __name__ == '__main__':
