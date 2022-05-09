@@ -31,5 +31,5 @@ python3 eval.py  # evaluate deblur results
 `conjugate_gradient.py`: our implementation of the conjugate gradient algorithm as an optimization scheme
 `eval.py`: the script to evaluate results
 `get_data.py`: data preprocessing and parsing
-`motion_deblur.py`: the main magic and algithms to deblur images
+`motion_deblur.py`: the main magic and algorithms to deblur images
 `params.py`: storage for hyperparameters
