@@ -2,6 +2,7 @@
 env/
 venv/
 data/kaggle_blur/
+results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
