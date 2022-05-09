@@ -39,6 +39,7 @@ def main():
     results = []
     values = []
     labels = []
+    reported_psnr = [27.5, 29, 23, 24, 27, 28.5, 30.5, 28, 26.5, 29.5, 26, 38, 31, 31, 30]
 
     for imgs in blurred_images:
         img_results = []
@@ -52,7 +53,9 @@ def main():
         values.append(get_average_psnr(imgs, truth))
         labels.append(str(i + 1))
 
-    plt.bar(labels, values)
+    plt.bar(labels, values, label='ours')
+    plt.bar(labels, reported_psnr, label='reported by paper')
+    plt.legend()
     plt.ylabel("Average PSNR")
     plt.xlabel("Image Number")
     plt.savefig("results/psnr.png")
