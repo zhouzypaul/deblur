@@ -1,5 +1,6 @@
 import os
 import pickle
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -45,10 +46,9 @@ def main():
     reported_psnr = [27.5, 29, 23, 24, 27, 28.5, 30.5, 28, 26.5, 29.5, 26, 38, 31, 31, 30]
 
     for imgs in blurred_images:
-        img_results = []
-        for img, _ in imgs:
-            latent, _ = deblur(img)
-            img_results.append(latent)
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(deblur, img) for img, _ in imgs]
+            img_results = [future.result() for future in futures]
         results.append(img_results)
 
     for i, (imgs, truth) in enumerate(zip(results, truth_images)):
