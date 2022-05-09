@@ -28,7 +28,7 @@ python3 eval.py  # evaluate deblur results
 
 ## File structure
 `data/`: the data directory
-`conjugat_gradient.py`: our implementation of the conjugate gradient algorithm as an optimization scheme
+`conjugate_gradient.py`: our implementation of the conjugate gradient algorithm as an optimization scheme
 `eval.py`: the script to evaluate results
 `get_data.py`: data preprocessing and parsing
 `motion_deblur.py`: the main magic and algithms to deblur images
