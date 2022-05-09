@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 """
 visualization methods
 """
-def visualize_text_deblurs(original, blurred, deblurred, kernel, est_kernel, save_path=None):
+def visualize_text_deblurs(original, blurred, deblurred, kernel, est_kernel, artifact_removed=None, save_path=None):
     """
     visualize the debluring results for the text dataset and the estimated kernels
     """
@@ -22,12 +22,17 @@ def visualize_text_deblurs(original, blurred, deblurred, kernel, est_kernel, sav
     plt.imshow(deblurred, cmap='gray')
 
     fig.add_subplot(2, 3, 4)
-    plt.title('Kernel')
+    plt.title('Groud Truth Blur Kernel')
     plt.imshow(kernel, cmap='gray')
 
     fig.add_subplot(2, 3, 5)
     plt.title('Estimated Kernel')
     plt.imshow(est_kernel, cmap='gray')
+
+    if artifact_removed is not None:
+        fig.add_subplot(2, 3, 6)
+        plt.title('Artifact Removed')
+        plt.imshow(artifact_removed)
 
     plt.tight_layout()
     if save_path is not None:
