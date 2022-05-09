@@ -1,8 +1,8 @@
-from matplotlib import pyplot as plt
-from get_data import parse_dataset
 import numpy as np
+from matplotlib import pyplot as plt
 
 from motion_deblur import deblur
+from get_data import parse_dataset
 
 """
 this file handles the evaluation of the debluring methods
@@ -59,4 +59,5 @@ def main():
 
 
 if __name__ == "__main__":
+    np.random.seed(0)
     main()
