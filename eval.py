@@ -1,3 +1,6 @@
+import os
+import pickle
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -52,6 +55,14 @@ def main():
         print("Computing average psnr for image {}".format(i))
         values.append(get_average_psnr(imgs, truth))
         labels.append(str(i + 1))
+
+    # save the result to be safe
+    if not os.path.exists('results'):
+        os.mkdir('results')
+    with open('results/psnr_values.pkl', 'wb') as f:
+        pickle.dump(values, f)
+    with open('results/psnr_results', 'wb') as f:
+        pickle.dump(results, f)
 
     plt.bar(labels, values, label='ours')
     plt.bar(labels, reported_psnr, label='reported by paper')
