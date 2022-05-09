@@ -1,4 +1,7 @@
 .DS_Store
+env/
+venv/
+data/kaggle_blur/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

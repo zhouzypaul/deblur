@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 from skimage.color import rgb2gray
 
 from conjugate_gradient import conjugate_gradient
-from get_data import parse_dataset
+from get_data import parse_ieee_dataset, parse_kaggle_blur_data
 from pypher import otf2psf, psf2otf
 import params as hp
 
@@ -385,7 +385,7 @@ def main():
     """
     image_path = 'data/ieee2016/text-images/gt_images'
     kernel_path = 'data/ieee2016/text-images/kernels'
-    ground_truth_images, blurred_images = parse_dataset(
+    ground_truth_images, blurred_images = parse_ieee_dataset(
         image_path, kernel_path)  # there should be 15 of them
 
     for ground_truth, blurs in zip(ground_truth_images, blurred_images):

@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt
-from get_data import parse_dataset
+from get_data import parse_ieee_dataset
 import numpy as np
 
 from motion_deblur import deblur
@@ -35,7 +35,7 @@ def main():
     """
     image_path = 'data/ieee2016/text-images/gt_images'
     kernel_path = 'data/ieee2016/text-images/kernels'
-    truth_images, blurred_images = parse_dataset(image_path, kernel_path)
+    truth_images, blurred_images = parse_ieee_dataset(image_path, kernel_path)
     results = []
     values = []
     labels = []
