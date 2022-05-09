@@ -4,10 +4,15 @@ This is an unofficial Python implementation of the 2014 IEEE paper "Deblurring T
 
 ## Project info
 This is implemented as the final project for CS1430 at Brown. 
+
 Contributing members:
-Alan Gu
-Edward Xing
-Luca Fonstad
+
+Alan Gu,
+
+Edward Xing,
+
+Luca Fonstad,
+
 Paul Zhiyuan Zhou
 
 
@@ -28,8 +33,17 @@ python3 eval.py  # evaluate deblur results
 
 ## File structure
 `data/`: the data directory
+
 `conjugate_gradient.py`: our implementation of the conjugate gradient algorithm as an optimization scheme
+
 `eval.py`: the script to evaluate results
+
 `get_data.py`: data preprocessing and parsing
+
 `motion_deblur.py`: the main magic and algorithms to deblur images
+
 `params.py`: storage for hyperparameters
+
+`*.npy`: data storage artifacts removal functionality
+
+`visualize.py`: visualization methods
