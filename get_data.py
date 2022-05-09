@@ -20,7 +20,8 @@ def parse_ieee_dataset(image_path, kernel_path, as_gray=False):
     """
     true = []
     blur = []
-    for im in os.listdir(image_path):
+    all_images = sorted(os.listdir(image_path))
+    for im in all_images:
         if im.endswith(".png"):
             if as_gray:
                 im = imread(os.path.join(image_path, im), as_gray=True)
