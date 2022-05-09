@@ -9,7 +9,7 @@ from cv2 import filter2D
 """
 this file handles parsing the datasets and getting the data from the online datasets
 """
-def parse_ieee_dataset(image_path, kernel_path):
+def parse_ieee_dataset(image_path, kernel_path, as_gray=False):
     """
     this function parses the dataset and returns a list of images
     args:
@@ -22,7 +22,10 @@ def parse_ieee_dataset(image_path, kernel_path):
     blur = []
     for im in os.listdir(image_path):
         if im.endswith(".png"):
-            im = imread(os.path.join(image_path, im))[:,:,:3]
+            if as_gray:
+                im = imread(os.path.join(image_path, im), as_gray=True)
+            else:
+                im = imread(os.path.join(image_path, im))[:,:,:3]
             true.append(im)
         img_blurs = []
         for k_path in os.listdir(kernel_path):

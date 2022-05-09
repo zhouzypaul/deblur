@@ -35,7 +35,7 @@ def main():
     """
     image_path = 'data/ieee2016/text-images/gt_images'
     kernel_path = 'data/ieee2016/text-images/kernels'
-    truth_images, blurred_images = parse_ieee_dataset(image_path, kernel_path)
+    truth_images, blurred_images = parse_ieee_dataset(image_path, kernel_path, as_gray=True)
     results = []
     values = []
     labels = []
@@ -55,7 +55,7 @@ def main():
     plt.bar(labels, values)
     plt.ylabel("Average PSNR")
     plt.xlabel("Image Number")
-    plt.show()
+    plt.savefig("results/psnr.png")
 
 
 if __name__ == "__main__":
