@@ -21,16 +21,23 @@ def get_average_psnr(results, truth):
     return:
         the average psnr
     """
-    def psnr(result, truth):
-        mse = np.mean((truth.astype(np.uint8) - result.astype(np.uint8)) ** 2)
-        if mse == 0:
-            return 100
-        return 20 * np.log10(255 / np.sqrt(mse))
-
     values = []
     for img in results:
         values.append(psnr(img, truth))
     return np.mean(np.asarray(values))
+
+
+def psnr(result, truth):
+    res = convert_to_uint(result)
+    tru = convert_to_uint(truth)
+    mse = np.mean((tru - res) ** 2)
+    if mse == 0:
+        return 100
+    return 20 * np.log10(255 / np.sqrt(mse))
+
+
+def convert_to_uint(img):
+    return np.uint8(255 * (img - np.min(img)) / (np.max(img) - np.min(img)))
 
 
 def main():
@@ -48,24 +55,26 @@ def main():
     for imgs in blurred_images:
         with ProcessPoolExecutor() as executor:
             futures = [executor.submit(deblur, img) for img, _ in imgs]
-            img_results = [future.result() for future in futures]
+            img_results = [future.result()[0] for future in futures]
         results.append(img_results)
+
+    # save the result to be safe
+    if not os.path.exists('results'):
+        os.mkdir('results')
+    with open('results/psnr_results', 'wb') as f:
+        pickle.dump(results, f)
 
     for i, (imgs, truth) in enumerate(zip(results, truth_images)):
         print("Computing average psnr for image {}".format(i))
         values.append(get_average_psnr(imgs, truth))
         labels.append(str(i + 1))
 
-    # save the result to be safe
-    if not os.path.exists('results'):
-        os.mkdir('results')
+    # save the results
     with open('results/psnr_values.pkl', 'wb') as f:
         pickle.dump(values, f)
-    with open('results/psnr_results', 'wb') as f:
-        pickle.dump(results, f)
 
-    plt.bar(labels, values, label='ours')
-    plt.bar(labels, reported_psnr, label='reported by paper')
+    plt.bar(labels - 0.2, values, 0.4, label='Ours')
+    plt.bar(labels + 0.2, reported_psnr, 0.4, label='Pan et al.')
     plt.legend()
     plt.ylabel("Average PSNR")
     plt.xlabel("Image Number")
