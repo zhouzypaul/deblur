@@ -21,7 +21,7 @@ def parse_dataset(image_path, kernel_path):
     blur = []
     for im in os.listdir(image_path):
         if im.endswith(".png"):
-            im = imread(os.path.join(image_path, im))[:,:,:3]
+            im = imread(os.path.join(image_path, im), as_gray=True)
             true.append(im)
         img_blurs = []
         for k_path in os.listdir(kernel_path):

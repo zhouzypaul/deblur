@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.fft import fft2, ifft2
 from scipy.signal import convolve2d, convolve
 from scipy.optimize import minimize
-from skimage.color import rgb2gray
+from scipy.stats import mode
 
 from conjugate_gradient import conjugate_gradient
 from get_data import parse_dataset
@@ -54,7 +54,7 @@ def deblur(blur_img):
 
     k = cv2.rotate(k, cv2.ROTATE_180)
 
-    return final_deblurred, k
+    return threshold_text(final_deblurred), k
 
 
 def estimate_blur_kernel(blur_img, kernel):
@@ -278,21 +278,18 @@ def compute_ax(x, p):
     return ap
 
 
-def visualize_results(original, blurred, deblurred, kernel, est_kernel):
+def visualize_results(blurred, deblurred, kernel, est_kernel):
     fig = plt.figure()
-    fig.add_subplot(2, 3, 1)
-    plt.title('Original')
-    plt.imshow(original, cmap='gray')
-    fig.add_subplot(2, 3, 2)
+    fig.add_subplot(2, 2, 1)
     plt.title('Blurred')
     plt.imshow(blurred, cmap='gray')
-    fig.add_subplot(2, 3, 3)
+    fig.add_subplot(2, 2, 2)
     plt.title('Deblurred')
     plt.imshow(deblurred, cmap='gray')
-    fig.add_subplot(2, 3, 4)
+    fig.add_subplot(2, 2, 3)
     plt.title('Kernel')
     plt.imshow(kernel, cmap='gray')
-    fig.add_subplot(2, 3, 5)
+    fig.add_subplot(2, 2, 4)
     plt.title('Estimated Kernel')
     plt.imshow(est_kernel, cmap='gray')
     plt.tight_layout()
@@ -303,15 +300,17 @@ def visualize_results(original, blurred, deblurred, kernel, est_kernel):
 # ==============================================================================
 # remove artifacts
 def min_w(w, beta, v, a):
-    return np.power(np.abs(w), a)+(beta/2.0)*np.power(w-v, 2)
+    return np.power(np.abs(w), a) + (beta / 2.0) * np.square(w - v)
 
 
 def snr(im1, im2):
     im1 = im1.reshape((-1, im1.shape[2]))
     im2 = im2.reshape((-1, im2.shape[2]))
-    mean = np.sum(im1, axis=0)/len(im1)
-    avgs = np.sum(np.square(im1-mean), axis=0)/np.sum(np.square(im1-im2), axis=0)
-    return np.sum(avgs)/im1.shape[1]
+    mean = np.sum(im1, axis=0) / len(im1)
+    nom = np.sum(np.square(im1 - mean), axis=0)
+    denom = np.sum(np.square(im1 - im2), axis=0)
+    avgs = nom / denom
+    return np.sum(avgs) / im1.shape[1]
 
     
 def get_LUT(a):
@@ -324,27 +323,33 @@ def get_LUT(a):
         vs = np.linspace(vmin, vmax, num=nv)
         betas = np.power(np.sqrt(2), np.arange(nbeta))
         table = np.zeros((nv, nbeta))
+
         for i in range(nv):
             print(i)
-            if i%1000==0:
+            if i % 1000 == 0:
                 print(i)
             for j in range(nbeta):
                 sol = minimize(min_w, 0, args=(betas[j], vs[i], a))
                 table[i, j] = sol.x[0]
+
         np.save(f"LUT-{a}", table)
     return table
 
 
 def solve_w(x, beta, f1, f2, LUT):
-    v1, v2 = convolve(x, np.repeat(f1[:,:,None], x.shape[2], axis=2), mode="same"), convolve(x, np.repeat(f2[:,:,None], x.shape[2], axis=2), mode="same")
+    v1 = convolve(x, np.repeat(f1[:,:,None], x.shape[2], axis=2), mode="same")
+    v2 = convolve(x, np.repeat(f2[:,:,None], x.shape[2], axis=2), mode="same")
     v1, v2 = np.clip(v1, -0.6, 0.6), np.clip(v2, -0.6, 0.6)
-    w1 = LUT[np.clip(np.searchsorted(np.linspace(-0.6, 0.6, num=10000), v1), 0, 10000-1), (np.searchsorted(np.power(np.sqrt(2), np.arange(16)), beta)*np.ones(v1.shape)).astype(np.int32)]
-    w2 = LUT[np.clip(np.searchsorted(np.linspace(-0.6, 0.6, num=10000), v2), 0, 10000-1), (np.searchsorted(np.power(np.sqrt(2), np.arange(16)), beta)*np.ones(v1.shape)).astype(np.int32)]
+
+    r1 = np.clip(np.searchsorted(np.linspace(-0.6, 0.6, num=10000), v1), 0, 9999)
+    c1 = np.searchsorted(np.power(np.sqrt(2), np.arange(16)), beta) * np.ones(v1.shape)
+    w1 = LUT[r1, c1.astype(np.int32)]
+
+    r2 = np.clip(np.searchsorted(np.linspace(-0.6, 0.6, num=10000), v2), 0, 9999)
+    c2 = np.searchsorted(np.power(np.sqrt(2), np.arange(16)), beta) * np.ones(v2.shape)
+    w2 = LUT[r2, c2.astype(np.int32)]
+
     return w1, w2
-
-
-def pad_evenly(desiredshape, arr):
-    return np.pad(arr, pad_width=((np.floor((desiredshape[0]-arr.shape[0])/2).astype(int), np.ceil((desiredshape[0]-arr.shape[0])/2).astype(int)), (np.floor((desiredshape[1]-arr.shape[1])/2).astype(int), np.ceil((desiredshape[1]-arr.shape[1])/2).astype(int))))
 
 
 def remove_artifact(blur_img, k, l):
@@ -359,23 +364,40 @@ def remove_artifact(blur_img, k, l):
     LUT = get_LUT(a)
     beta = b0
     x = y
-    k = k/np.sum(k)
-    k = k[::-1,::-1]
+    k = k / np.sum(k)
+    k = k[::-1, ::-1]
+
     f1, f2 = np.array([[1,-1]]), np.array([[1],[-1]])
     fftsize = (x.shape[0] + k.shape[0] + f1.shape[0] + f2.shape[0], x.shape[1] + k.shape[1] + f1.shape[1] + f2.shape[1])
     fftsize = np.power(2, np.ceil(np.log2(fftsize))).astype(int)
-    f1fft, f2fft = np.fft.fft2(f1, axes=(0, 1), s=fftsize), np.fft.fft2(f2, axes=(0, 1), s=fftsize)
+    f1fft = np.fft.fft2(f1, axes=(0, 1), s=fftsize)
+    f2fft = np.fft.fft2(f2, axes=(0, 1), s=fftsize)
     kfft = np.fft.fft2(k, axes=(0, 1), s=fftsize)
     yfft = np.fft.fft2(y, axes=(0, 1), s=fftsize)
-    f1fft, f2fft, kfft = np.repeat(f1fft[:,:,None], x.shape[2], axis=2), np.repeat(f2fft[:,:,None], x.shape[2], axis=2), np.repeat(kfft[:,:,None], x.shape[2], axis=2)
+    
+    f1fft = np.repeat(f1fft[:,:,None], x.shape[2], axis=2)
+    f2fft = np.repeat(f2fft[:,:,None], x.shape[2], axis=2)
+    kfft = np.repeat(kfft[:,:,None], x.shape[2], axis=2)
+
     while beta < bmax:
         w1, w2 = solve_w(x, beta, f1, f2, LUT)
-        w1fft, w2fft = np.fft.fft2(w1, axes=(0, 1), s=fftsize), np.fft.fft2(w2, axes=(0, 1), s=fftsize)
-        x = np.fft.ifft2((np.conjugate(f1fft) * w1fft + np.conjugate(f2fft) * w2fft + (l/beta) * np.conjugate(kfft)*yfft) / (np.conjugate(f1fft) * f1fft + np.conjugate(f2fft) * f2fft + (l/beta) * np.conjugate(kfft) * kfft), axes=(0, 1))[0:y.shape[0],0:y.shape[1]].real
-        #x = np.fft.ifft2((np.conjugate(f1fft)+np.conjugate(f2fft)+(l/beta)*np.conjugate(kfft)*yfft)/(np.conjugate(f1fft)*f1fft+np.conjugate(f2fft)*f2fft+(l/beta)*np.conjugate(kfft)*kfft), axes=(0, 1))[0:y.shape[0],0:y.shape[1]].real
+        w1fft = np.fft.fft2(w1, axes=(0, 1), s=fftsize)
+        w2fft = np.fft.fft2(w2, axes=(0, 1), s=fftsize)
+
+        nom = np.conjugate(f1fft) * w1fft + np.conjugate(f2fft) * w2fft + (l / beta) * np.conjugate(kfft)*yfft
+        denom = np.conjugate(f1fft) * f1fft + np.conjugate(f2fft) * f2fft + (l / beta) * np.conjugate(kfft) * kfft
+        x = np.fft.ifft2(nom / denom, axes=(0, 1))[0:y.shape[0],0:y.shape[1]].real
         x = np.clip(x, 0, 1)
-        beta = binc*beta
+        beta = binc * beta
     return x
+
+
+def threshold_text(x):
+    img = 255 * (x - np.min(x)) / (np.max(x) - np.min(x))
+    img = np.uint8(img)
+    bg = mode(img, axis=None)[0][0] * 0.9
+    (_, thresh) = cv2.threshold(img, bg, 255, cv2.THRESH_BINARY)
+    return thresh
 
 
 def main():
@@ -388,16 +410,11 @@ def main():
     ground_truth_images, blurred_images = parse_dataset(
         image_path, kernel_path)  # there should be 15 of them
 
-    for ground_truth, blurs in zip(ground_truth_images, blurred_images):
+    for _, blurs in zip(ground_truth_images, blurred_images):
         rind = np.random.randint(len(blurs))
         blur_img, kernel = blurs[rind]
-        latent, est_kernel = deblur(rgb2gray(blur_img))
-        visualize_results(ground_truth, blur_img, latent, kernel, est_kernel)
-        ls = [10, 100, 1000, 10000, 100000, 1000000, 10000000]
-        for l in ls:
-            x = remove_artifact(blur_img, est_kernel, l)
-            plt.imshow(x)
-            plt.show()
+        latent, est_kernel = deblur(blur_img)
+        visualize_results(blur_img, latent, kernel, est_kernel)
 
 
 if __name__ == '__main__':
