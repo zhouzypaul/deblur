@@ -73,8 +73,8 @@ def main():
     with open('results/psnr_values.pkl', 'wb') as f:
         pickle.dump(values, f)
 
-    plt.bar(labels - 0.2, values, 0.4, label='Ours')
-    plt.bar(labels + 0.2, reported_psnr, 0.4, label='Pan et al.')
+    plt.bar(np.array(labels) - 0.2, values, 0.4, label='Ours')
+    plt.bar(np.array(labels) + 0.2, reported_psnr, 0.4, label='Pan et al.')
     plt.legend()
     plt.ylabel("Average PSNR")
     plt.xlabel("Image Number")
