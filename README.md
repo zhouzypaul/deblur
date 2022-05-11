@@ -47,6 +47,10 @@ python3 -m deblur.eval
 We achieve comparable PSNR performance as the IEEE paper:
 ![psnr results](assets/psnr.png)
 
+Furthermore, we also propose a image pixel intensity threshold method that achieves better PSNR results for grayscale text images:
+![psnr results](assets/text_psnr.png)
+use the `--threshold` option to run the `motion_deblur.py` to try it out!
+
 
 ## File structure
 `data/`: the data directory
