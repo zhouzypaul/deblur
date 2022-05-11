@@ -4,7 +4,6 @@ import argparse
 
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.fft import fft2, ifft2
 from scipy.signal import convolve2d, convolve
 from scipy.optimize import minimize
@@ -374,6 +373,8 @@ def main():
                         help='directory to store the data')
     parser.add_argument('--save', action='store_true', default=False,
                         help='when set to true, the results will be saved to results/ instead of shown in a window')
+    parser.add_argument('--regularization', type=int, default=10**4,
+                        help='value of the regularization parameter used for artifact removal')
     args = parser.parse_args()
 
     # create saving dir, erase the previous saved results
@@ -382,6 +383,7 @@ def main():
             shutil.rmtree(f'results/{args.data}')
         os.makedirs(f'results/{args.data}', exist_ok=True)
     
+    # ieee dataset
     if args.data == 'ieee':
         image_path = 'data/ieee2016/text-images/gt_images'
         kernel_path = 'data/ieee2016/text-images/kernels'
@@ -391,22 +393,18 @@ def main():
             blur_img, kernel = blurs[rind]
             latent, est_kernel = deblur(rgb2gray(blur_img))
             save_path = f"results/{args.data}/{i}.png" if args.save else None
-            visualize_text_deblurs(ground_truth, blur_img, latent, kernel, est_kernel, save_path=save_path)
-            ls = [10, 100, 1000, 10000, 100000, 1000000, 10000000]
-            for l in ls:
-                x = remove_artifact(blur_img, est_kernel, l)
-                plt.imshow(x)
-                plt.show()
+            removed_artifact = remove_artifact(blur_img, kernel, args.regularization)
+            visualize_text_deblurs(ground_truth, blur_img, latent, kernel, est_kernel, artifact_removed=removed_artifact, save_path=save_path)
 
+    # kaggle dataset
     elif args.data == 'kaggle':
         dataset_path = os.path.join(args.data_dir, 'kaggle_blur')
         sharps, defocused_blurs, motion_blurs = parse_kaggle_blur_data(dataset_path)
         for i, (sharp, defocused, motion) in enumerate(zip(sharps, defocused_blurs, motion_blurs)):
             _, defocused_kernel = deblur(rgb2gray(defocused))
             _, motion_kernel = deblur(rgb2gray(motion))
-            regularization_param = 10**6
-            defocused_latent = remove_artifact(defocused, defocused_kernel, regularization_param)
-            motion_latent = remove_artifact(motion, motion_kernel, regularization_param)
+            defocused_latent = remove_artifact(defocused, defocused_kernel, args.regularization)
+            motion_latent = remove_artifact(motion, motion_kernel, args.regularization)
             save_path = f"results/{args.data}/{i}.png" if args.save else None
             visualize_kaggle_deblurs(sharp, defocused, motion, defocused_latent, motion_latent, save_path=save_path)
 
