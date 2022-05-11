@@ -29,9 +29,11 @@ pip3 install -r requirements.txt
 ## Running
 deblur images
 ```python
-python3 -m deblur.motion_deblur [--data ieee] [--save]
+python3 -m deblur.motion_deblur [--data ieee] [--save] [--regularizatio n] [--threshold]
 # use either `ieee` or `kaggle` for the --data option to run different datasets to deblur
 # use --save to save the deblurring results to disk
+# use --regularization to change the regularization used for artifact removal
+# use --threshold only on grayscale images to enhance results
 ```
 run `python3 -m deblur.motion_deblur --help` for more information
 

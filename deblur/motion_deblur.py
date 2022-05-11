@@ -7,6 +7,7 @@ import numpy as np
 from scipy.fft import fft2, ifft2
 from scipy.signal import convolve2d, convolve
 from scipy.optimize import minimize
+from scipy.stats import mode
 from skimage.color import rgb2gray
 
 import deblur.params as hp
@@ -21,13 +22,14 @@ Deblurs images based on iterative latent image and blur kernel estimation
 """
 
 
-def deblur(blur_img):
+def deblur(blur_img, use_threshold=False):
     """
     deblurs an image by estimating the blur kernel using
     a coarse-to-fine image pyramid approach
 
     args:
         blur_img: the blur image
+        use_threshold: whether to use a threshold on the final estimated image
     return:
         final blur kernel and list of estimated latent images
     """
@@ -56,7 +58,10 @@ def deblur(blur_img):
 
     k = cv2.rotate(k, cv2.ROTATE_180)
 
-    return final_deblurred, k
+    if use_threshold:
+        return threshold_text(final_deblurred), k
+    else:
+        return final_deblurred, k
 
 
 def estimate_blur_kernel(blur_img, kernel):
@@ -358,6 +363,14 @@ def remove_artifact(blur_img, k, l):
     return x
 
 
+def threshold_text(x):
+    img = 255 * (x - np.min(x)) / (np.max(x) - np.min(x))
+    img = np.uint8(img)
+    bg = mode(img, axis=None)[0][0] * 0.9
+    (_, thresh) = cv2.threshold(img, bg, 255, cv2.THRESH_BINARY)
+    return thresh
+
+
 def main():
     """
     interleave kernel and latent image estimation
@@ -375,6 +388,8 @@ def main():
                         help='when set to true, the results will be saved to results/ instead of shown in a window')
     parser.add_argument('--regularization', type=int, default=10**4,
                         help='value of the regularization parameter used for artifact removal')
+    parser.add_argument('--threshold', action='store_true', default=False,
+                        help='when set to true, the results will be thresholded. Only set to true when the input image is supposed to be grayscale')
     args = parser.parse_args()
 
     # create saving dir, erase the previous saved results
@@ -391,7 +406,7 @@ def main():
         for i, (ground_truth, blurs) in enumerate(zip(ground_truth_images, blurred_images)):
             rind = np.random.randint(len(blurs))
             blur_img, kernel = blurs[rind]
-            latent, est_kernel = deblur(rgb2gray(blur_img))
+            latent, est_kernel = deblur(rgb2gray(blur_img), use_threshold=args.threshold)
             save_path = f"results/{args.data}/{i}.png" if args.save else None
             removed_artifact = remove_artifact(blur_img, kernel, args.regularization)
             visualize_text_deblurs(ground_truth, blur_img, latent, kernel, est_kernel, artifact_removed=removed_artifact, save_path=save_path)
