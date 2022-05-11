@@ -29,19 +29,31 @@ pip3 install -r requirements.txt
 ## Running
 deblur images
 ```python
-python3 motion_deblur.py [--data ieee] [--save]
+python3 -m deblur.motion_deblur [--data ieee] [--save]
 # use either `ieee` or `kaggle` for the --data option to run different datasets to deblur
 # use --save to save the deblurring results to disk
 ```
+run `python3 -m deblur.motion_deblur --help` for more information
 
-evaluate the PSNR of deblurring results
+evaluate the PSNR of deblurring results (this may take quite a while)
 ```python
-python3 eval.py
+python3 -m deblur.eval
 ```
+
+
+## Results
+We achieve comparable PSNR performance as the IEEE paper:
+![psnr results](assets/psnr.png)
 
 
 ## File structure
 `data/`: the data directory
+
+`assets/`: the assets directory holding images for README
+
+`resources/`: data storage for artifacts removal functionality
+
+`deblur/`: the source code directory, in which we have:
 
 `conjugate_gradient.py`: our implementation of the conjugate gradient algorithm as an optimization scheme
 
@@ -52,7 +64,5 @@ python3 eval.py
 `motion_deblur.py`: the main magic and algorithms to deblur images
 
 `params.py`: storage for hyperparameters
-
-`*.npy`: data storage artifacts removal functionality
 
 `visualize.py`: visualization methods

@@ -5,8 +5,8 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from matplotlib import pyplot as plt
 
-from motion_deblur import deblur
-from get_data import parse_ieee_dataset
+from deblur.motion_deblur import deblur
+from deblur.get_data import parse_ieee_dataset
 
 """
 this file handles the evaluation of the debluring methods

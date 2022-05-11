@@ -10,11 +10,11 @@ from scipy.signal import convolve2d, convolve
 from scipy.optimize import minimize
 from skimage.color import rgb2gray
 
-import params as hp
-from conjugate_gradient import conjugate_gradient
-from get_data import parse_ieee_dataset, parse_kaggle_blur_data
-from pypher import otf2psf, psf2otf
-from visualize import visualize_kaggle_deblurs, visualize_text_deblurs
+import deblur.params as hp
+from deblur.conjugate_gradient import conjugate_gradient
+from deblur.get_data import parse_ieee_dataset, parse_kaggle_blur_data
+from deblur.pypher import otf2psf, psf2otf
+from deblur.visualize import visualize_kaggle_deblurs, visualize_text_deblurs
 
 
 """
@@ -296,8 +296,8 @@ def snr(im1, im2):
 
     
 def get_LUT(a):
-    if os.path.exists(f"LUT-{a}.npy"):
-        table = np.load(f"LUT-{a}.npy")
+    if os.path.exists(f"resources/LUT-{a}.npy"):
+        table = np.load(f"resources/LUT-{a}.npy")
     else:
         nv = 10000
         nbeta = 16
